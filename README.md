@@ -31,6 +31,16 @@ Method: **GET**
 Description: Obtain information about partition  
 
 
+Url Structure: `{schema}://{host}/v1/consumers/{consumer}/topics/{topic}/{partition}`  
+Method: **GET**
+Description: Fetch consumer group offset for a partition
+
+
+Url Structure: `{schema}://{host}/v1/consumers/{consumer}/topics/{topic}/{partition}`  
+Method: **PUT**
+Description: Commit consumer group offset of a partition
+
+
 ### How to Install
 
     $ go get -u github.com/legionus/kafka-http-proxy
