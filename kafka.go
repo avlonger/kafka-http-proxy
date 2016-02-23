@@ -29,6 +29,9 @@ var (
 	// KafkaErrReplicaNotAvailable is a wrapper over proto.ErrReplicaNotAvailable
 	KafkaErrReplicaNotAvailable = proto.ErrReplicaNotAvailable
 
+	// KafkaErrUnknownTopicOrPartition is a wrapper over proto.ErrUnknownTopicOrPartition
+	KafkaErrUnknownTopicOrPartition = proto.ErrUnknownTopicOrPartition
+
 	// KafkaErrNoData is a wrapper over kafka.ErrNoData
 	KafkaErrNoData = kafka.ErrNoData
 )

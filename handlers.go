@@ -54,6 +54,9 @@ func httpStatusError(err error) int {
 	if _, ok := err.(KhpError); ok {
 		return http.StatusServiceUnavailable
 	}
+	if err == KafkaErrUnknownTopicOrPartition {
+		return http.StatusNotFound
+	}
 	return http.StatusInternalServerError
 }
 
