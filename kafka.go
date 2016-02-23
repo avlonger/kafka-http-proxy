@@ -38,8 +38,11 @@ const (
 	KhpErrorNoBrokers
 	KhpErrorReadTimeout
 	KhpErrorWriteTimeout
+	KhpErrorOffsetCommitTimeout
+	KhpErrorOffsetFetchTimeout
 	KhpErrorConsumerClosed
 	KhpErrorProducerClosed
+	KhpErrorOffsetCoordinatorClosed
 	KhpErrorMetadataReadTimeout
 )
 
@@ -143,7 +146,7 @@ func NewClient(settings *Config) (*KafkaClient, error) {
 		MetadataCachePeriod: settings.Broker.MetadataCachePeriod.Duration,
 		GetOffsetsTimeout:   settings.Broker.GetOffsetsTimeout.Duration,
 		ReconnectPeriod:     settings.Broker.ReconnectPeriod.Duration,
-		Timings:             NewTimings([]string{"GetMetadata", "GetOffsets", "GetMessage", "SendMessage"}),
+		Timings:             NewTimings([]string{"GetMetadata", "GetOffsets", "GetMessage", "SendMessage", "CommitOffset", "FetchOffset"}),
 		Counters:            NewCounters([]string{"DeadBrokers", "FreeBrokers"}),
 		allBrokers:          make(map[int64]*kafka.Broker),
 		deadBrokers:         make(chan int64, settings.Broker.NumConns),
@@ -785,4 +788,86 @@ func (p *KafkaOffsetCoordinator) Corrupt() {
 	}
 	p.client.deadBroker(p.brokerID)
 	p.opened = false
+}
+
+// CommitOffset commits consumer group offset of a given topic partition to kafka.
+func (c *KafkaOffsetCoordinator) CommitOffset(topic string, partitionID int32, offset int64) (err error) {
+	if !c.opened {
+		err = KhpError{
+			Errno:   KhpErrorOffsetCoordinatorClosed,
+			message: "Write to closed offset coordinator",
+		}
+		return
+	}
+
+	defer c.client.Timings["CommitOffset"].Start().Stop()
+
+	result := make(chan struct{})
+	timeout := make(chan struct{})
+
+	if c.CommitOffsetTimeout > 0 {
+		timer := time.AfterFunc(c.CommitOffsetTimeout, func() { close(timeout) })
+		defer timer.Stop()
+	}
+
+	var kafkaErr error
+
+	go func() {
+		kafkaErr = c.offsetCoordinator.Commit(topic, partitionID, offset)
+		close(result)
+	}()
+
+	select {
+	case <-result:
+		err = kafkaErr
+	case <-timeout:
+		c.Corrupt()
+		err = KhpError{
+			Errno:   KhpErrorOffsetCommitTimeout,
+			message: "Offset commit timeout",
+		}
+	}
+	return
+}
+
+// FetchOffset returns consumer group offset of a given topic partition from kafka.
+func (c *KafkaOffsetCoordinator) FetchOffset(topic string, partitionID int32) (offset int64, metadata string, err error) {
+	if !c.opened {
+		err = KhpError{
+			Errno:   KhpErrorOffsetCoordinatorClosed,
+			message: "Read from closed offset coordinator",
+		}
+		return
+	}
+
+	defer c.client.Timings["FetchOffset"].Start().Stop()
+
+	result := make(chan struct{})
+	timeout := make(chan struct{})
+
+	if c.FetchOffsetTimeout > 0 {
+		timer := time.AfterFunc(c.FetchOffsetTimeout, func() { close(timeout) })
+		defer timer.Stop()
+	}
+
+	var kafkaOffset int64
+	var kafkaMetadata string
+	var kafkaErr error
+
+	go func() {
+		kafkaOffset, kafkaMetadata, kafkaErr = c.offsetCoordinator.Offset(topic, partitionID)
+		close(result)
+	}()
+
+	select {
+	case <-result:
+		offset, metadata, err = kafkaOffset, kafkaMetadata, kafkaErr
+	case <-timeout:
+		c.Corrupt()
+		err = KhpError{
+			Errno:   KhpErrorOffsetFetchTimeout,
+			message: "Offset fetch timeout",
+		}
+	}
+	return
 }
