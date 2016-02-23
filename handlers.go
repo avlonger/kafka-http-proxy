@@ -400,7 +400,14 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 		return
 	}
 
-	offsetCoordinator, err := s.Client.NewOffsetCoordinator(s.Cfg, "FUCK")
+	consumer := p.Get("consumer")
+
+	if consumer == "" {
+		s.errorResponse(w, http.StatusBadRequest, "Consumer name must be provided")
+		return
+	}
+
+	offsetCoordinator, err := s.Client.NewOffsetCoordinator(s.Cfg, consumer)
 	if err != nil {
 		s.errorResponse(w, httpStatusError(err), "Unable to make offset coordinator: %v", err)
 		return
