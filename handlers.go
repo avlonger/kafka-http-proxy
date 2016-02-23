@@ -23,6 +23,15 @@ type kafkaParameters struct {
 	Offset    int64  `json:"offset"`
 }
 
+// ConsumerOffsetInfo contains information about consumer group offset of a topic partition. Used in GET/POST response.
+type consumerOffsetInfo struct {
+	Consumer  string `json:"consumer"`
+	Topic     string `json:"topic"`
+	Partition int32  `json:"partition"`
+	Offset    int64  `json:"offset"`
+	Metadata  string `json:"metadata"`
+}
+
 // ResponsePartitionInfo contains information about Kafka partition.
 type responsePartitionInfo struct {
 	Topic        string  `json:"topic"`
@@ -367,7 +376,38 @@ ConsumeLoop:
 }
 
 func (s *Server) getOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
-	// TODO: to be done
+	defer s.Stats.HTTPResponseTime["FetchOffset"].Start().Stop()
+
+	kafka := &consumerOffsetInfo{
+		Consumer:  p.Get("consumer"),
+		Topic:     p.Get("topic"),
+		Partition: toInt32(p.Get("partition")),
+		Offset:    -1,
+	}
+
+	if !s.validRequest(w, p) {
+		return
+	}
+
+	if kafka.Consumer == "" {
+		s.errorResponse(w, http.StatusBadRequest, "Consumer name must be provided")
+		return
+	}
+
+	offsetCoordinator, err := s.Client.NewOffsetCoordinator(s.Cfg, kafka.Consumer)
+	if err != nil {
+		s.errorResponse(w, httpStatusError(err), "Unable to make offset coordinator: %v", err)
+		return
+	}
+	defer offsetCoordinator.Close()
+
+	kafka.Offset, kafka.Metadata, err = offsetCoordinator.FetchOffset(kafka.Topic, kafka.Partition)
+	if err != nil {
+		s.errorResponse(w, httpStatusError(err), "Unable to fetch offset: %v", err)
+		return
+	}
+
+	s.successResponse(w, kafka)
 }
 
 func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
@@ -379,7 +419,7 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 		return
 	}
 
-	kafka := &kafkaParameters{
+	kafka := &consumerOffsetInfo{
 		Offset:    -1,
 	}
 
@@ -393,6 +433,7 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 		return
 	}
 
+	kafka.Consumer = p.Get("consumer")
 	kafka.Topic = p.Get("topic")
 	kafka.Partition = toInt32(p.Get("partition"))
 
@@ -400,14 +441,12 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 		return
 	}
 
-	consumer := p.Get("consumer")
-
-	if consumer == "" {
+	if kafka.Consumer == "" {
 		s.errorResponse(w, http.StatusBadRequest, "Consumer name must be provided")
 		return
 	}
 
-	offsetCoordinator, err := s.Client.NewOffsetCoordinator(s.Cfg, consumer)
+	offsetCoordinator, err := s.Client.NewOffsetCoordinator(s.Cfg, kafka.Consumer)
 	if err != nil {
 		s.errorResponse(w, httpStatusError(err), "Unable to make offset coordinator: %v", err)
 		return
@@ -419,7 +458,7 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 		s.errorResponse(w, httpStatusError(err), "Unable to commit offset: %v", err)
 		return
 	}
-	s.successResponse(w, nil)
+	s.successResponse(w, kafka)
 }
 
 func (s *Server) getTopicListHandler(w *HTTPResponse, r *http.Request, p *url.Values) {

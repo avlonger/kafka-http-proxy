@@ -63,7 +63,7 @@ func NewMetricStats() *MetricStats {
 	return &MetricStats{
 		HTTPStatus:       NewHTTPStatus([]int{200, 400, 404, 405, 416, 500, 502, 503}),
 		HTTPResponseTime: NewTimings([]string{"GET", "POST", "GetTopicList", "GetTopicInfo", "GetPartitionInfo",
-			"CommitOffset"}),
+			"CommitOffset", "FetchOffset"}),
 	}
 }
 
