@@ -760,12 +760,17 @@ func (k *KafkaClient) NewOffsetCoordinator(settings *Config, consumerGroup strin
 	}
 
 	conf.RetryErrLimit = settings.OffsetCoordinator.RetryErrLimit
-	conf.RetryErrWait = settings.OffsetCoordinator.RetryErrWait
+	conf.RetryErrWait = settings.OffsetCoordinator.RetryErrWait.Duration
+
+	coordinator, err := k.allBrokers[brokerID].OffsetCoordinator(conf)
+	if err != nil {
+		return nil, err
+	}
 
 	return &KafkaOffsetCoordinator{
 		client:              k,
 		brokerID:            brokerID,
-		offsetCoordinator:   k.allBrokers[brokerID].OffsetCoordinator(conf),
+		offsetCoordinator:   coordinator,
 		opened:              true,
 		CommitOffsetTimeout: settings.OffsetCoordinator.CommitOffsetTimeout.Duration,
 		FetchOffsetTimeout:  settings.OffsetCoordinator.FetchOffsetTimeout.Duration,

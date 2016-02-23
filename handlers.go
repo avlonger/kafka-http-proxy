@@ -371,7 +371,7 @@ func (s *Server) getOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Value
 }
 
 func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
-	defer s.Stats.HTTPResponseTime["PUT"].Start().Stop()
+	defer s.Stats.HTTPResponseTime["CommitOffset"].Start().Stop()
 
 	msg, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -412,8 +412,7 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 		s.errorResponse(w, httpStatusError(err), "Unable to commit offset: %v", err)
 		return
 	}
-
-	s.successResponse(w, kafka)
+	s.successResponse(w, nil)
 }
 
 func (s *Server) getTopicListHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
