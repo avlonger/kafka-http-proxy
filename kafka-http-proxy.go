@@ -264,6 +264,7 @@ func (s *Server) Run() error {
 		Regexp      *regexp.Regexp
 		GETHandler  func(*HTTPResponse, *http.Request, *url.Values)
 		POSTHandler func(*HTTPResponse, *http.Request, *url.Values)
+		PUTHandler  func(*HTTPResponse, *http.Request, *url.Values)
 	}
 
 	handlers := []httpHandler{
@@ -272,6 +273,13 @@ func (s *Server) Run() error {
 			LimitConns:  true,
 			GETHandler:  s.getHandler,
 			POSTHandler: s.sendHandler,
+		},
+		httpHandler{
+			Regexp:      regexp.MustCompile("^/v1/consumers/(?P<consumer>[A-Za-z0-9_-]+)/topics/(?P<topic>[A-Za-z0-9_-]+)/(?P<partition>[0-9]+)/?$"),
+			LimitConns:  true,
+			GETHandler:  s.getOffsetHandler,
+			POSTHandler: s.notAllowedHandler,
+			PUTHandler:  s.commitOffsetHandler,
 		},
 		httpHandler{
 			Regexp:      regexp.MustCompile("^/v1/info/topics/(?P<topic>[A-Za-z0-9_-]+)/(?P<partition>[0-9]+)/?$"),
@@ -358,6 +366,8 @@ func (s *Server) Run() error {
 				a.GETHandler(resp, req, &p)
 			case "POST":
 				a.POSTHandler(resp, req, &p)
+			case "PUT":
+				a.PUTHandler(resp, req, &p)
 			default:
 				s.notAllowedHandler(resp, req, &p)
 			}

@@ -366,6 +366,56 @@ ConsumeLoop:
 	}
 }
 
+func (s *Server) getOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
+	// TODO: to be done
+}
+
+func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
+	defer s.Stats.HTTPResponseTime["PUT"].Start().Stop()
+
+	msg, err := ioutil.ReadAll(r.Body)
+	if err != nil {
+		s.errorResponse(w, http.StatusBadRequest, "Unable to read body: %s", err)
+		return
+	}
+
+	kafka := &kafkaParameters{
+		Offset:    -1,
+	}
+
+	if err = json.Unmarshal(msg, &kafka); err != nil {
+		s.errorResponse(w, http.StatusBadRequest, "Request body must be JSON")
+		return
+	}
+
+	if kafka.Offset < 0 {
+		s.errorResponse(w, http.StatusBadRequest, "Offset must be provided not less than 0")
+		return
+	}
+
+	kafka.Topic = p.Get("topic")
+	kafka.Partition = toInt32(p.Get("partition"))
+
+	if !s.validRequest(w, p) {
+		return
+	}
+
+	offsetCoordinator, err := s.Client.NewOffsetCoordinator(s.Cfg, "FUCK")
+	if err != nil {
+		s.errorResponse(w, httpStatusError(err), "Unable to make offset coordinator: %v", err)
+		return
+	}
+	defer offsetCoordinator.Close()
+
+	err = offsetCoordinator.CommitOffset(kafka.Topic, kafka.Partition, kafka.Offset)
+	if err != nil {
+		s.errorResponse(w, httpStatusError(err), "Unable to commit offset: %v", err)
+		return
+	}
+
+	s.successResponse(w, kafka)
+}
+
 func (s *Server) getTopicListHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
 	defer s.Stats.HTTPResponseTime["GetTopicList"].Start().Stop()
 
