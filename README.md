@@ -37,7 +37,7 @@ Description: Fetch consumer group offset of a partition
 
 
 Url Structure: `{schema}://{host}/v1/consumers/{consumer}/topics/{topic}/{partition}`  
-Method: **PUT**
+Method: **PUT**  
 Description: Commit consumer group offset of a partition
 
 
