@@ -32,8 +32,8 @@ Description: Obtain information about partition
 
 
 Url Structure: `{schema}://{host}/v1/consumers/{consumer}/topics/{topic}/{partition}`  
-Method: **GET**
-Description: Fetch consumer group offset for a partition
+Method: **GET**  
+Description: Fetch consumer group offset of a partition
 
 
 Url Structure: `{schema}://{host}/v1/consumers/{consumer}/topics/{topic}/{partition}`  
