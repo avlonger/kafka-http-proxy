@@ -62,6 +62,12 @@ type Config struct {
 		MaxFetchSize      int32
 		DefaultFetchSize  int32
 	}
+	OffsetCoordinator struct {
+		RetryErrLimit       int
+		RetryErrWait        CfgDuration
+		CommitOffsetTimeout CfgDuration
+		FetchOffsetTimeout  CfgDuration
+	}
 	Logging struct {
 		DisableColors    bool
 		DisableTimestamp bool
@@ -101,6 +107,11 @@ func (c *Config) SetDefaults() {
 	c.Consumer.MinFetchSize = 1
 	c.Consumer.MaxFetchSize = 4194304
 	c.Consumer.DefaultFetchSize = 524288
+
+	c.OffsetCoordinator.RetryErrLimit = 2
+	c.OffsetCoordinator.RetryErrWait.Duration = 200 * time.Millisecond
+	c.OffsetCoordinator.CommitOffsetTimeout.Duration = 15 * time.Second
+	c.OffsetCoordinator.FetchOffsetTimeout.Duration = 15 * time.Second
 
 	c.Logging.DisableColors = true
 	c.Logging.DisableTimestamp = false

@@ -732,3 +732,57 @@ func (p *KafkaProducer) SendMessage(topic string, partitionID int32, message []b
 	}
 	return
 }
+
+// KafkaOffsetCoordinator is a wrapper around kafka.OffsetCoordinator.
+type KafkaOffsetCoordinator struct {
+	client              *KafkaClient
+	brokerID            int64
+	offsetCoordinator   kafka.OffsetCoordinator
+	opened              bool
+	CommitOffsetTimeout time.Duration
+	FetchOffsetTimeout  time.Duration
+}
+
+// NewOffsetCoordinator creates a new KafkaOffsetCoordinator.
+func (k *KafkaClient) NewOffsetCoordinator(settings *Config, consumerGroup string) (*KafkaOffsetCoordinator, error) {
+	brokerID, err := k.getBroker()
+	if err != nil {
+		return nil, err
+	}
+
+	conf := kafka.NewOffsetCoordinatorConf(consumerGroup)
+
+	conf.Logger = &kafkaLogger{
+		subsys: "kafka/offset-coord",
+	}
+
+	conf.RetryErrLimit = settings.OffsetCoordinator.RetryErrLimit
+	conf.RetryErrWait = settings.OffsetCoordinator.RetryErrWait
+
+	return &KafkaOffsetCoordinator{
+		client:              k,
+		brokerID:            brokerID,
+		offsetCoordinator:   k.allBrokers[brokerID].OffsetCoordinator(conf),
+		opened:              true,
+		CommitOffsetTimeout: settings.OffsetCoordinator.CommitOffsetTimeout.Duration,
+		FetchOffsetTimeout:  settings.OffsetCoordinator.FetchOffsetTimeout.Duration,
+	}, nil
+}
+
+// Close frees the connection and returns it to the free pool.
+func (p *KafkaOffsetCoordinator) Close() error {
+	if p.opened {
+		p.client.freeBroker(p.brokerID)
+		p.opened = false
+	}
+	return nil
+}
+
+// Corrupt marks the connection as a broken.
+func (p *KafkaOffsetCoordinator) Corrupt() {
+	if !p.opened {
+		return
+	}
+	p.client.deadBroker(p.brokerID)
+	p.opened = false
+}
