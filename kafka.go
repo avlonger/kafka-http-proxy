@@ -141,6 +141,7 @@ func NewClient(settings *Config) (*KafkaClient, error) {
 	conf.DialTimeout = settings.Broker.DialTimeout.Duration
 	conf.LeaderRetryLimit = settings.Broker.LeaderRetryLimit
 	conf.LeaderRetryWait = settings.Broker.LeaderRetryWait.Duration
+	conf.AllowTopicCreation = settings.Broker.AllowTopicCreation
 
 	log.Debug("Gona create broker pool = ", settings.Broker.NumConns)
 

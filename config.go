@@ -44,6 +44,7 @@ type Config struct {
 		GetOffsetsTimeout   CfgDuration
 		MetadataCachePeriod CfgDuration
 		GetMetadataTimeout  CfgDuration
+		AllowTopicCreation  bool
 	}
 	Producer struct {
 		RequestTimeout     CfgDuration

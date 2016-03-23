@@ -200,7 +200,7 @@ func (s *Server) sendHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
 		return
 	}
 
-	if !s.validRequest(w, p, false) {
+	if !s.validRequest(w, p, !s.Cfg.Broker.AllowTopicCreation) {
 		return
 	}
 
