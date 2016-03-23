@@ -125,7 +125,7 @@ func (s *Server) notAllowedHandler(w *HTTPResponse, r *http.Request, p *url.Valu
 	s.errorResponse(w, http.StatusMethodNotAllowed, "405 Method Not Allowed")
 }
 
-func (s *Server) validRequest(w *HTTPResponse, p *url.Values) bool {
+func (s *Server) validRequest(w *HTTPResponse, p *url.Values, checkTopic bool) bool {
 	topic := p.Get("topic")
 
 	if topic == "" {
@@ -143,6 +143,10 @@ func (s *Server) validRequest(w *HTTPResponse, p *url.Values) bool {
 	if err != nil {
 		s.errorResponse(w, httpStatusError(err), "Unable to get topic: %v", err)
 		return false
+	}
+
+	if !checkTopic {
+		return true
 	}
 
 	if !found {
@@ -196,7 +200,7 @@ func (s *Server) sendHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
 		return
 	}
 
-	if !s.validRequest(w, p) {
+	if !s.validRequest(w, p, false) {
 		return
 	}
 
@@ -244,7 +248,7 @@ func (s *Server) getHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
 		length = 1
 	}
 
-	if !s.validRequest(w, p) {
+	if !s.validRequest(w, p, true) {
 		return
 	}
 
@@ -388,7 +392,7 @@ func (s *Server) getOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Value
 		Offset:    -1,
 	}
 
-	if !s.validRequest(w, p) {
+	if !s.validRequest(w, p, true) {
 		return
 	}
 
@@ -440,7 +444,7 @@ func (s *Server) commitOffsetHandler(w *HTTPResponse, r *http.Request, p *url.Va
 	kafka.Topic = p.Get("topic")
 	kafka.Partition = toInt32(p.Get("partition"))
 
-	if !s.validRequest(w, p) {
+	if !s.validRequest(w, p, true) {
 		return
 	}
 
@@ -498,7 +502,7 @@ func (s *Server) getTopicListHandler(w *HTTPResponse, r *http.Request, p *url.Va
 }
 
 func (s *Server) getPartitionInfoHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
-	if !s.validRequest(w, p) {
+	if !s.validRequest(w, p, true) {
 		return
 	}
 
@@ -550,7 +554,7 @@ func (s *Server) getPartitionInfoHandler(w *HTTPResponse, r *http.Request, p *ur
 }
 
 func (s *Server) getTopicInfoHandler(w *HTTPResponse, r *http.Request, p *url.Values) {
-	if !s.validRequest(w, p) {
+	if !s.validRequest(w, p, true) {
 		return
 	}
 
